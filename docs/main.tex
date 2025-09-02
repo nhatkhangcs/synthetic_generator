@@ -1,0 +1,195 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\usepackage{titlesec}
+
+% Custom colors for code listings
+\definecolor{lightgray}{RGB}{240, 240, 240}
+\definecolor{darkgray}{RGB}{90, 90, 90}
+\definecolor{darkgreen}{RGB}{0, 128, 0}
+
+% Code listing settings
+\lstset{
+    backgroundcolor=\color{lightgray},
+    keywordstyle=\bfseries,
+    commentstyle=\color{darkgray}\itshape,
+    stringstyle=\color{darkgreen},
+    basicstyle=\ttfamily\small,
+    frame=single,
+    showstringspaces=false,
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    captionpos=b
+}
+
+% Document settings
+\geometry{margin=1in}
+\setlength{\headheight}{15pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{SynGen White Paper}
+\fancyhead[R]{\thepage}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\title{\Huge \textbf{SynGen: Synthetic Data Generator for Machine Learning Pipelines}}
+\author{}
+\date{\today}
+
+% Add horizontal bar for style
+\newcommand{\horizbar}{
+    \vspace{1em}
+    \hrule height 1pt
+    \vspace{1em}
+}
+
+\begin{document}
+
+    \maketitle
+    \horizbar
+
+    \section*{Abstract}
+    As Machine Learning (ML) and Dataflow pipelines scale in complexity, the need for high-quality, varied, and condition-specific synthetic data becomes paramount. \textbf{SynGen}, an innovative data generation tool, provides developers and researchers with a flexible, high-performance solution for creating synthetic datasets. This paper details the technical requirements, functionality, and architecture of \texttt{SynGen}, along with key use cases and potential future enhancements.
+
+    \horizbar
+
+
+    \section{Introduction}
+    In modern ML workflows, the ability to simulate varied datasets helps ensure robustness and comprehensive testing of models. \texttt{SynGen}, a Python-based pip-installable package, addresses this need by allowing users to define dataset structures, specify data types, and enforce custom conditions on data generation.
+
+    \textbf{SynGen's} architecture is designed to scale with future data needs, offering a highly modular and extensible framework suitable for both research and enterprise use cases. In this white paper, we delve into the core functionalities, including attribute management, data type specification, conditional constraints, and CRUD operations.
+
+    \horizbar
+
+
+    \section{Functional Requirements}
+
+    \subsection{Core Features}
+    The \texttt{SynGen} package provides comprehensive synthetic data generation features:
+    \begin{itemize}
+        \item \textbf{Schema-based Generation}: Define data schemas with types, distributions, and constraints
+        \item \textbf{Multiple Data Types}: Support for integers, floats, strings, booleans, dates, emails, and more
+        \item \textbf{Statistical Distributions}: Normal, uniform, exponential, categorical, and other distributions
+        \item \textbf{Templates}: Pre-built schemas for common use cases
+        \item \textbf{Schema Inference}: Automatically detect schemas from existing data
+    \end{itemize}
+
+    \subsection{Sample Usage}
+    Below is a sample implementation using \texttt{SynGen}:
+
+    \begin{lstlisting}[language=Python, caption=Sample Usage of SynGen]
+from syngen import generate_data, DataSchema, ColumnSchema, DataType, DistributionType
+
+# Define schema
+schema = DataSchema(
+    columns=[
+        ColumnSchema(
+            name="age",
+            data_type=DataType.INTEGER,
+            distribution=DistributionType.NORMAL,
+            parameters={"mean": 30, "std": 10},
+            min_value=18,
+            max_value=80
+        ),
+        ColumnSchema(
+            name="email",
+            data_type=DataType.EMAIL,
+            distribution=DistributionType.CATEGORICAL,
+            parameters={"categories": ["user@example.com", "admin@example.com"]}
+        )
+    ]
+)
+
+# Generate data
+dataset = generate_data(schema, n_samples=1000)
+print(dataset)
+    \end{lstlisting}
+
+    \noindent\textbf{Expected Outcome}: A dataframe with age values following a normal distribution between 18-80 and valid email addresses.
+
+    \horizbar
+
+
+    \section{APIs for Data Generation}
+    \texttt{SynGen} provides comprehensive functionality to generate synthetic datasets programmatically.
+
+    \subsection{Generate Data}
+    The \texttt{generate\_data} function allows users to generate synthetic data based on schemas.
+
+    \begin{lstlisting}[language=Python, caption=API Example: Generate Data]
+dataset = generate_data(schema, n_samples=1000, seed=42)
+    \end{lstlisting}
+
+    \subsection{Load Templates}
+    Use pre-built templates for common use cases.
+
+    \begin{lstlisting}[language=Python, caption=API Example: Load Template]
+from syngen import load_template
+schema = load_template("customer_data")
+dataset = generate_data(schema, n_samples=500)
+    \end{lstlisting}
+
+    \subsection{Infer Schema}
+    Automatically detect data schema from existing data.
+
+    \begin{lstlisting}[language=Python, caption=API Example: Schema Inference]
+from syngen import infer_schema
+schema = infer_schema(existing_data)
+new_data = generate_data(schema, n_samples=1000)
+    \end{lstlisting}
+
+    \subsection{Validate Data}
+    Validate generated data against schemas.
+
+    \begin{lstlisting}[language=Python, caption=API Example: Data Validation]
+from syngen import validate_data
+results = validate_data(dataset, schema)
+    \end{lstlisting}
+
+    \horizbar
+
+
+    \section{Non-Functional Requirements}
+
+    \subsection{Performance}
+    \texttt{SynGen} is optimized for speed and efficiency, ensuring high performance even when generating large datasets with complex schemas.
+
+    \subsection{Scalability}
+    The package is designed to scale with dataset size, schema complexity, and advanced feature integration in the future.
+
+    \subsection{Extensibility}
+    The core architecture supports modularity, allowing for future enhancements such as multi-threaded data generation, distributed computing support, and integration with data validation pipelines.
+
+    \horizbar
+
+
+    \section{Use-cases}
+
+
+    \section{Design}
+
+    \subsection{Class diagram}
+
+    \subsection{Sequence diagram}
+
+
+    \section{Future Enhancements}
+    In future versions, \texttt{SynGen} will offer advanced features, such as:
+    \begin{itemize}
+        \item \textbf{AI-Powered Data Generation}: Integration with AI models like OpenAI for prompt-based data generation.
+        \item \textbf{Advanced Correlations}: Support for complex statistical relationships between attributes.
+        \item \textbf{Interactive Dashboard}: A user-friendly interface for managing schemas and visualizing data constraints.
+    \end{itemize}
+
+    \horizbar
+
+
+    \section{Logs}
+
+
+\end{document}

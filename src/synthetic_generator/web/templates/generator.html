@@ -1,0 +1,1828 @@
+{% extends "base.html" %}
+
+{% block title %}Data Generator - Synthetic Generator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .column-card {
+        transition: all 0.3s ease;
+    }
+    .column-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .parameter-group {
+        border-left: 3px solid #007bff;
+        padding-left: 15px;
+        margin-bottom: 15px;
+    }
+    .json-editor {
+        font-family: 'Courier New', monospace;
+        min-height: 200px;
+    }
+    .min-max-row {
+        display: none;
+    }
+    .min-max-row.show {
+        display: flex !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Left Panel - Schema Builder -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>Schema Builder
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Basic Settings -->
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">Generation Settings</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="nSamples" class="form-label">Number of Samples</label>
+                                <input type="number" class="form-control" id="nSamples" value="1000" min="1" max="100000">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="seed" class="form-label">Random Seed</label>
+                                <input type="number" class="form-control" id="seed" placeholder="Leave empty for random">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <label for="templateSelect" class="form-label">Load Template</label>
+                                <select class="form-select" id="templateSelect">
+                                    <option value="">Choose a template...</option>
+                                    <option value="customer_data">Customer Data</option>
+                                    <option value="medical_data">Medical Data</option>
+                                    <option value="financial_data">Financial Data</option>
+                                    <option value="ecommerce_data">E-commerce Data</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columns Management -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-muted mb-0">Columns</h6>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addColumn()">
+                                <i class="fas fa-plus me-1"></i>Add Column
+                            </button>
+                        </div>
+                        <div id="columnsContainer">
+                            <!-- Columns will be added here dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-success btn-lg" onclick="generateData()">
+                            <i class="fas fa-magic me-2"></i>Generate Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Results -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-2"></i>Generated Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="loadingIndicator" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Generating synthetic data...</p>
+                    </div>
+                    
+                    <div id="resultsContainer">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-table fa-3x mb-3"></i>
+                            <p>Generated data will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="statisticsContainer">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                            <p>Statistics will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Column Template (Hidden) -->
+<template id="columnTemplate">
+    <div class="column-card card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Column <span class="column-number"></span></h6>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeColumn(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Column Name</label>
+                    <input type="text" class="form-control column-name" placeholder="e.g., age, income">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Data Type</label>
+                    <select class="form-select data-type">
+                        <option value="integer">Integer</option>
+                        <option value="float">Float</option>
+                        <option value="string">String</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Phone</option>
+                        <option value="address">Address</option>
+                        <option value="name">Name</option>
+                        <option value="categorical">Categorical</option>
+                        <option value="boolean">Boolean</option>
+                        <option value="date">Date</option>
+                        <option value="datetime">DateTime</option>
+                        <option value="json">JSON</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label class="form-label">Distribution</label>
+                    <select class="form-select distribution-type">
+                        <option value="normal">Normal</option>
+                        <option value="uniform">Uniform</option>
+                        <option value="exponential">Exponential</option>
+                        <option value="gamma">Gamma</option>
+                        <option value="beta">Beta</option>
+                        <option value="weibull">Weibull</option>
+                        <option value="poisson">Poisson</option>
+                        <option value="binomial">Binomial</option>
+                        <option value="geometric">Geometric</option>
+                        <option value="categorical">Categorical</option>
+                        <option value="constant">Constant</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Unique Values</label>
+                    <div class="form-check">
+                        <input class="form-check-input unique-check" type="checkbox">
+                        <label class="form-check-label">Require unique values</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nullable</label>
+                    <div class="form-check">
+                        <input class="form-check-input nullable-check" type="checkbox" checked>
+                        <label class="form-check-label">Allow null values</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Null Probability</label>
+                    <input type="number" class="form-control param-null_probability" 
+                           placeholder="0.0" step="0.01" min="0" max="1" value="0.0">
+                </div>
+            </div>
+            
+            <div class="row mt-3 min-max-row">
+                <div class="col-md-6">
+                    <label class="form-label">Min Value</label>
+                    <input type="number" class="form-control param-min" 
+                           placeholder="Min value" step="any">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Max Value</label>
+                    <input type="number" class="form-control param-max" 
+                           placeholder="Max value" step="any">
+                </div>
+            </div>
+
+            <!-- Parameters Section -->
+            <div class="parameters-section mt-3">
+                <h6 class="text-muted">Parameters</h6>
+                <div class="parameter-group">
+                    <p class="text-muted">Select data type and distribution to see required parameters</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let columnCounter = 0;
+let templatesLoaded = false;
+
+// Global parameter configuration
+const PARAMETER_CONFIG = {
+    // Data type to distribution compatibility
+    dataTypeDistributions: {
+        'integer': ['normal', 'uniform', 'exponential', 'gamma', 'beta', 'weibull', 'poisson', 'binomial', 'geometric', 'constant'],
+        'float': ['normal', 'uniform', 'exponential', 'gamma', 'beta', 'weibull', 'constant'],
+        'string': ['constant', 'categorical'],
+        'email': ['constant', 'categorical'],
+        'phone': ['constant', 'categorical'],
+        'address': ['constant', 'categorical'],
+        'name': ['constant', 'categorical'],
+        'categorical': ['categorical', 'constant'],
+        'boolean': ['constant', 'categorical'],
+        'date': ['uniform', 'constant'],
+        'datetime': ['uniform', 'constant'],
+        'json': ['constant']
+    },
+    
+    // Distribution to parameter requirements
+    distributionParameters: {
+        'categorical': {
+            required: ['categories'],
+            optional: ['probabilities'],
+            labels: {
+                'categories': 'Categories (comma-separated)',
+                'probabilities': 'Probabilities (comma-separated, optional)'
+            },
+            types: {
+                'categories': 'text',
+                'probabilities': 'text'
+            }
+        },
+        'constant': {
+            required: ['value'],
+            optional: [],
+            labels: {
+                'value': 'Constant Value'
+            },
+            types: {
+                'value': 'text'
+            }
+        },
+        'normal': {
+            required: ['mean', 'std'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'mean': 'Mean',
+                'std': 'Standard Deviation',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'mean': 'number',
+                'std': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'uniform': {
+            required: ['low', 'high'],
+            optional: [],
+            labels: {
+                'low': 'Min Value',
+                'high': 'Max Value'
+            },
+            types: {
+                'low': 'number',
+                'high': 'number'
+            }
+        },
+        'exponential': {
+            required: ['scale'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'scale': 'Scale (λ)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'scale': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'gamma': {
+            required: ['shape', 'scale'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'shape': 'Shape (α)',
+                'scale': 'Scale (β)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'shape': 'number',
+                'scale': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'beta': {
+            required: ['alpha', 'beta'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'alpha': 'Alpha (α)',
+                'beta': 'Beta (β)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'alpha': 'number',
+                'beta': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'weibull': {
+            required: ['shape', 'scale'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'shape': 'Shape (k)',
+                'scale': 'Scale (λ)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'shape': 'number',
+                'scale': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'poisson': {
+            required: ['lambda'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'lambda': 'Lambda (λ)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'lambda': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'binomial': {
+            required: ['n', 'p'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'n': 'Number of Trials (n)',
+                'p': 'Probability of Success (p)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'n': 'number',
+                'p': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        },
+        'geometric': {
+            required: ['p'],
+            optional: ['min_value', 'max_value'],
+            labels: {
+                'p': 'Probability of Success (p)',
+                'min_value': 'Min Value (Optional)',
+                'max_value': 'Max Value (Optional)'
+            },
+            types: {
+                'p': 'number',
+                'min_value': 'number',
+                'max_value': 'number'
+            }
+        }
+    },
+    
+    // Special handling for text types with constant distribution
+    textTypeDefaults: {
+        'email': {
+            'constant': {
+                default_value: 'user@example.com',
+                placeholder: 'Enter email address'
+            }
+        },
+        'address': {
+            'constant': {
+                default_value: '123 Main St, City, State 12345',
+                placeholder: 'Enter full address'
+            }
+        },
+        'name': {
+            'constant': {
+                default_value: 'John Doe',
+                placeholder: 'Enter full name'
+            }
+        },
+        'phone': {
+            'constant': {
+                default_value: '(555) 123-4567',
+                placeholder: 'Enter phone number'
+            }
+        }
+    },
+    
+    // Special parameters for each data type
+    dataTypeParameters: {
+        'email': {
+            'format': {
+                label: 'Email Format',
+                type: 'select',
+                options: [
+                    {value: 'first.last', text: 'First.Last (john.smith@domain.com)'},
+                    {value: 'firstlast', text: 'FirstLast (johnsmith@domain.com)'},
+                    {value: 'first_last', text: 'First_Last (john_smith@domain.com)'},
+                    {value: 'first', text: 'First only (john@domain.com)'}
+                ],
+                default: 'first.last'
+            },
+            'add_numbers': {
+                label: 'Add Random Numbers',
+                type: 'checkbox',
+                default: false,
+                description: 'Add random numbers to make emails unique'
+            },
+            'custom_domains': {
+                label: 'Custom Domains (comma-separated)',
+                type: 'text',
+                default: 'gmail.com,yahoo.com,hotmail.com',
+                description: 'Leave empty to use default domains'
+            }
+        },
+        'address': {
+            'country': {
+                label: 'Country',
+                type: 'select',
+                options: [
+                    {value: 'US', text: 'United States'},
+                    {value: 'CA', text: 'Canada'},
+                    {value: 'UK', text: 'United Kingdom'},
+                    {value: 'AU', text: 'Australia'},
+                    {value: 'DE', text: 'Germany'},
+                    {value: 'FR', text: 'France'}
+                ],
+                default: 'US'
+            },
+            'include_zip': {
+                label: 'Include ZIP/Postal Code',
+                type: 'checkbox',
+                default: true
+            },
+            'street_format': {
+                label: 'Street Format',
+                type: 'select',
+                options: [
+                    {value: 'number_name_type', text: 'Number Name Type (123 Main St)'},
+                    {value: 'name_type_number', text: 'Name Type Number (Main St 123)'}
+                ],
+                default: 'number_name_type'
+            }
+        },
+        'name': {
+            'format': {
+                label: 'Name Format',
+                type: 'select',
+                options: [
+                    {value: 'first_last', text: 'First Last (John Smith)'},
+                    {value: 'last_first', text: 'Last, First (Smith, John)'},
+                    {value: 'first_middle_last', text: 'First Middle Last (John Michael Smith)'},
+                    {value: 'first_last_initial', text: 'First L. (John S.)'}
+                ],
+                default: 'first_last'
+            },
+            'gender_specific': {
+                label: 'Gender-Specific Names',
+                type: 'checkbox',
+                default: true,
+                description: 'Use gender-appropriate first names'
+            },
+            'include_titles': {
+                label: 'Include Titles',
+                type: 'checkbox',
+                default: false,
+                description: 'Add Mr., Ms., Dr., etc.'
+            }
+        },
+        'phone': {
+            'country_code': {
+                label: 'Country Code',
+                type: 'select',
+                options: [
+                    {value: '1', text: '+1 (US/Canada)'},
+                    {value: '44', text: '+44 (UK)'},
+                    {value: '49', text: '+49 (Germany)'},
+                    {value: '33', text: '+33 (France)'},
+                    {value: '61', text: '+61 (Australia)'},
+                    {value: '81', text: '+81 (Japan)'}
+                ],
+                default: '1'
+            },
+            'format': {
+                label: 'Phone Format',
+                type: 'select',
+                options: [
+                    {value: 'us', text: 'US Format: (XXX) XXX-XXXX'},
+                    {value: 'international', text: 'International: +X-XXX-XXX-XXXX'},
+                    {value: 'simple', text: 'Simple: XXX-XXX-XXXX'}
+                ],
+                default: 'us'
+            },
+            'include_extensions': {
+                label: 'Include Extensions',
+                type: 'checkbox',
+                default: false,
+                description: 'Add x123 for extensions'
+            }
+        }
+    },
+    
+    // Specialized parameters for text data types
+    dataTypeParameters: {
+        'email': {
+            'format': {
+                type: 'select',
+                label: 'Email Format',
+                options: [
+                    { value: 'simple', text: 'Simple (user@domain.com)' },
+                    { value: 'realistic', text: 'Realistic Names' },
+                    { value: 'business', text: 'Business Format' }
+                ],
+                default: 'realistic'
+            },
+            'domains': {
+                type: 'text',
+                label: 'Allowed Domains (comma-separated)',
+                default: 'gmail.com, yahoo.com, outlook.com'
+            }
+        },
+        'phone': {
+            'format': {
+                type: 'select',
+                label: 'Phone Format',
+                options: [
+                    { value: 'us', text: 'US Format (XXX-XXX-XXXX)' },
+                    { value: 'international', text: 'International (+1-XXX-XXX-XXXX)' },
+                    { value: 'simple', text: 'Simple Numbers' }
+                ],
+                default: 'us'
+            },
+            'country_code': {
+                type: 'text',
+                label: 'Country Code',
+                default: '+1'
+            }
+        },
+        'address': {
+            'format': {
+                type: 'select',
+                label: 'Address Format',
+                options: [
+                    { value: 'us', text: 'US Format' },
+                    { value: 'international', text: 'International' },
+                    { value: 'simple', text: 'Simple Text' }
+                ],
+                default: 'us'
+            },
+            'include_zip': {
+                type: 'checkbox',
+                label: 'Include ZIP/Postal Code',
+                default: true
+            }
+        },
+        'name': {
+            'format': {
+                type: 'select',
+                label: 'Name Format',
+                options: [
+                    { value: 'first_last', text: 'First Last' },
+                    { value: 'full_name', text: 'Full Name' },
+                    { value: 'simple', text: 'Simple Text' }
+                ],
+                default: 'first_last'
+            },
+            'gender_specific': {
+                type: 'checkbox',
+                label: 'Gender-Specific Names',
+                default: true
+            }
+        }
+    },
+    
+    // Text type defaults for specialized parameters
+    textTypeDefaults: {
+        'email': {
+            'categorical': {
+                default_value: 'realistic',
+                placeholder: 'Choose email format'
+            }
+        },
+        'phone': {
+            'categorical': {
+                default_value: 'us',
+                placeholder: 'Choose phone format'
+            }
+        },
+        'address': {
+            'categorical': {
+                default_value: 'us',
+                placeholder: 'Choose address format'
+            }
+        },
+        'name': {
+            'categorical': {
+                default_value: 'first_last',
+                placeholder: 'Choose name format'
+            }
+        }
+    },
+    
+    // Date/time handling for uniform distribution
+    dateTimeHandling: {
+        'date': {
+            'uniform': {
+                required: ['start_date', 'end_date'],
+                labels: {
+                    'start_date': 'Start Date',
+                    'end_date': 'End Date'
+                },
+                types: {
+                    'start_date': 'date',
+                    'end_date': 'date'
+                }
+            }
+        },
+        'datetime': {
+            'uniform': {
+                required: ['start_datetime', 'end_datetime'],
+                labels: {
+                    'start_datetime': 'Start DateTime',
+                    'end_datetime': 'End DateTime'
+                },
+                types: {
+                    'start_datetime': 'datetime-local',
+                    'end_datetime': 'datetime-local'
+                }
+            }
+        }
+    }
+};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Generator page loaded');
+    
+    try {
+        addColumn(); // Add first column by default
+        loadTemplates();
+        
+        // Check if we have a stored schema from inference page
+        console.log('🔍 Checking for stored schema...');
+        checkForStoredSchema();
+
+        // Check URL for a template parameter (coming from Templates page)
+        console.log('🔍 Checking URL for template parameter...');
+        checkForTemplateParam();
+    } catch (error) {
+        console.error('❌ Error during page initialization:', error);
+    }
+});
+
+function checkForStoredSchema() {
+    console.log('🔍 checkForStoredSchema called');
+    
+    try {
+        const storedSchema = sessionStorage.getItem('inferredSchema');
+        console.log('📦 Stored schema from sessionStorage:', storedSchema);
+        
+        if (storedSchema) {
+            try {
+                const schema = JSON.parse(storedSchema);
+                console.log('✅ Found stored schema from inference:', schema);
+                
+                // Show a simple notification without depending on utils
+                showSimpleNotification('Schema loaded from inference page!', 'success');
+                
+                // Apply the stored schema
+                applyStoredSchema(schema);
+                
+                // Clear the stored schema to avoid confusion
+                sessionStorage.removeItem('inferredSchema');
+                console.log('🗑️ Stored schema cleared from sessionStorage');
+                
+            } catch (error) {
+                console.error('❌ Error parsing stored schema:', error);
+                sessionStorage.removeItem('inferredSchema');
+            }
+        } else {
+            console.log('ℹ️ No stored schema found in sessionStorage');
+        }
+    } catch (error) {
+        console.error('❌ Error in checkForStoredSchema:', error);
+    }
+}
+
+function showSimpleNotification(message, type = 'info') {
+    // Create a simple notification without depending on external utils
+    const alertClass = type === 'error' ? 'alert-danger' : 
+                      type === 'success' ? 'alert-success' : 
+                      type === 'warning' ? 'alert-warning' : 'alert-info';
+    
+    const alert = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Insert at the top of the main container
+    const container = document.querySelector('main');
+    if (container) {
+        container.insertAdjacentHTML('afterbegin', alert);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                if (alert.classList.contains('alert-dismissible')) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            });
+        }, 5000);
+    }
+}
+
+function checkForTemplateParam() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const template = params.get('template');
+        if (template) {
+            console.log(`✅ Found template parameter in URL: ${template}`);
+            // Load and apply the template schema
+            loadTemplate(template);
+            // Also set the dropdown to reflect the chosen template if present
+            const select = document.getElementById('templateSelect');
+            if (select) {
+                select.value = template;
+            }
+        } else {
+            console.log('ℹ️ No template parameter found in URL');
+        }
+    } catch (e) {
+        console.error('❌ Error parsing template parameter from URL:', e);
+    }
+}
+
+function applyStoredSchema(schema) {
+    console.log('🔄 Applying stored schema:', schema);
+    
+    // Clear existing columns
+    document.getElementById('columnsContainer').innerHTML = '';
+    columnCounter = 0;
+    
+    // Add columns from stored schema
+    schema.columns.forEach((column, index) => {
+        console.log(`📝 Adding column ${index}:`, column);
+        
+        addColumn();
+        const lastCard = document.querySelector('.column-card:last-child');
+        
+        if (!lastCard) {
+            console.error('❌ Could not find last column card');
+            return;
+        }
+        
+        console.log(`✅ Column card created for ${column.name}`);
+        
+        // Fill in the values
+        const nameInput = lastCard.querySelector('.column-name');
+        const dataTypeSelect = lastCard.querySelector('.data-type');
+        const distSelect = lastCard.querySelector('.distribution-type');
+        
+        if (nameInput) nameInput.value = column.name;
+        if (dataTypeSelect) dataTypeSelect.value = column.data_type;
+        if (distSelect) distSelect.value = column.distribution;
+        
+        console.log(`✅ Basic values set for ${column.name}`);
+        
+        // Set constraints
+        if (column.unique) {
+            const uniqueCheck = lastCard.querySelector('.unique-check');
+            if (uniqueCheck) uniqueCheck.checked = true;
+        }
+        
+        if (column.nullable !== undefined) {
+            const nullableCheck = lastCard.querySelector('.nullable-check');
+            if (nullableCheck) nullableCheck.checked = column.nullable;
+        }
+        
+        console.log(`✅ Constraints set for ${column.name}`);
+        
+        // IMPORTANT: Update parameter fields based on data type and distribution
+        // This ensures the correct parameters are shown
+        if (dataTypeSelect && distSelect) {
+            console.log(`🔄 Updating parameter fields for ${column.name} (${column.data_type}/${column.distribution})`);
+            
+            // Force update of distribution options first
+            updateDistributionOptionsForColumn(lastCard, dataTypeSelect, distSelect);
+            // Then update parameter fields
+            updateParameterFieldsForColumn(lastCard, dataTypeSelect, distSelect);
+            
+            console.log(`✅ Parameter fields updated for ${column.name}`);
+        } else {
+            console.error(`❌ Could not find data type or distribution selectors for ${column.name}`);
+        }
+        
+        // Fill parameters after the parameter fields are created
+        setTimeout(() => {
+            console.log(`⏰ Filling parameters for ${column.name}`);
+            
+            if (column.parameters) {
+                Object.keys(column.parameters).forEach(param => {
+                    const input = lastCard.querySelector(`.param-${param}`);
+                    if (input) {
+                        if (param === 'categories' && Array.isArray(column.parameters[param])) {
+                            input.value = column.parameters[param].join(', ');
+                        } else {
+                            input.value = column.parameters[param];
+                        }
+                        console.log(`✅ Parameter ${param} set for ${column.name}: ${input.value}`);
+                    } else {
+                        console.warn(`⚠️ Parameter input not found for ${param} in ${column.name}`);
+                    }
+                });
+            }
+            
+            // Set min/max values only for numerical data types
+            if (['integer', 'float'].includes(column.data_type)) {
+                if (column.min_value !== null && column.min_value !== undefined) {
+                    const minInput = lastCard.querySelector('.param-min');
+                    if (minInput) minInput.value = column.min_value;
+                }
+                
+                if (column.max_value !== null && column.max_value !== undefined) {
+                    const maxInput = lastCard.querySelector('.param-max');
+                    if (maxInput) maxInput.value = column.max_value;
+                }
+            }
+            
+            // Set null probability if it exists
+            if (column.null_probability !== null && column.null_probability !== undefined) {
+                const nullProbInput = lastCard.querySelector('.param-null_probability');
+                if (nullProbInput) nullProbInput.value = column.null_probability;
+            }
+            
+        }, 100);
+    });
+    
+    // Update the page title or add a note that schema was loaded
+    const header = document.querySelector('.card-header h5');
+    if (header) {
+        header.innerHTML = '<i class="fas fa-cogs me-2"></i>Schema Builder <span class="badge bg-success ms-2">Schema Loaded</span>';
+    }
+    
+    console.log('🎉 Schema application completed');
+}
+
+// Helper function to update distribution options for a specific column
+function updateDistributionOptionsForColumn(columnCard, dataTypeSelect, distSelect) {
+    const dataType = dataTypeSelect.value;
+    const allowedDistributions = PARAMETER_CONFIG.dataTypeDistributions[dataType] || [];
+    
+    // Clear current options
+    distSelect.innerHTML = '';
+    
+    // Add allowed distributions
+    allowedDistributions.forEach(dist => {
+        const option = document.createElement('option');
+        option.value = dist;
+        option.textContent = dist.charAt(0) + dist.slice(1).toLowerCase();
+        distSelect.appendChild(option);
+    });
+}
+
+// Helper function to update parameter fields for a specific column
+function updateParameterFieldsForColumn(columnCard, dataTypeSelect, distSelect) {
+    const dataType = dataTypeSelect.value;
+    const distribution = distSelect.value;
+    
+    // Show/hide min-max fields based on data type
+    const minMaxRow = columnCard.querySelector('.min-max-row');
+    if (minMaxRow) {
+        // Only show min/max for numerical data types
+        const isNumerical = ['integer', 'float'].includes(dataType);
+        if (isNumerical) {
+            minMaxRow.classList.add('show');
+        } else {
+            minMaxRow.classList.remove('show');
+            // Clear min/max values for non-numerical types
+            const minInput = minMaxRow.querySelector('.param-min');
+            const maxInput = minMaxRow.querySelector('.param-max');
+            if (minInput) minInput.value = '';
+            if (maxInput) maxInput.value = '';
+        }
+    }
+    
+    // Clear existing parameter fields
+    const paramsSection = columnCard.querySelector('.parameters-section');
+    paramsSection.innerHTML = '<h6 class="text-muted">Parameters</h6>';
+    
+    // Check for special date/time handling
+    if (dataType === 'date' || dataType === 'datetime') {
+        if (distribution === 'uniform' && PARAMETER_CONFIG.dateTimeHandling[dataType]) {
+            const paramConfig = PARAMETER_CONFIG.dateTimeHandling[dataType][distribution];
+            const requiredGroup = createParameterGroup('Required Parameters', paramConfig.required, paramConfig, true, dataType, distribution);
+            paramsSection.appendChild(requiredGroup);
+            return;
+        }
+    }
+    
+    // Handle text data types with specialized parameters (for both constant and categorical)
+    if (['email', 'address', 'name', 'phone'].includes(dataType) && (distribution === 'constant' || distribution === 'categorical')) {
+        const textParams = PARAMETER_CONFIG.dataTypeParameters[dataType];
+        
+        if (textParams) {
+            const specializedGroup = createSpecializedParameterGroup('Specialized Parameters', textParams, dataType);
+            paramsSection.appendChild(specializedGroup);
+            
+            // For categorical distribution, also show the categories field
+            if (distribution === 'categorical') {
+                const categoriesGroup = createParameterGroup('Distribution Parameters', ['categories'], {
+                    required: ['categories'],
+                    labels: {'categories': 'Categories (comma-separated)'},
+                    types: {'categories': 'text'}
+                }, true, dataType, distribution);
+                paramsSection.appendChild(categoriesGroup);
+            }
+            return;
+        }
+    }
+    
+    // Handle regular distributions
+    const paramConfig = PARAMETER_CONFIG.distributionParameters[distribution];
+    if (!paramConfig) {
+        paramsSection.innerHTML = '<h6 class="text-muted">Parameters</h6><p class="text-muted">No parameters required for this distribution</p>';
+        return;
+    }
+    
+    // Create parameter groups
+    const requiredGroup = createParameterGroup('Required Parameters', paramConfig.required, paramConfig, true, dataType, distribution);
+    const optionalGroup = createParameterGroup('Optional Parameters', paramConfig.optional, paramConfig, false, dataType, distribution);
+    
+    paramsSection.appendChild(requiredGroup);
+    if (paramConfig.optional.length > 0) {
+        paramsSection.appendChild(optionalGroup);
+    }
+}
+
+function addColumn() {
+    console.log('➕ addColumn called, current counter:', columnCounter);
+    
+    try {
+        columnCounter++;
+        const template = document.getElementById('columnTemplate');
+        
+        if (!template) {
+            console.error('❌ Column template not found!');
+            return;
+        }
+        
+        console.log('✅ Column template found');
+        
+        const clone = template.content.cloneNode(true);
+        
+        // Update column number
+        const columnNumber = clone.querySelector('.column-number');
+        if (columnNumber) {
+            columnNumber.textContent = columnCounter;
+            console.log('✅ Column number updated to:', columnCounter);
+        }
+        
+        // Add to container
+        const container = document.getElementById('columnsContainer');
+        if (!container) {
+            console.error('❌ Columns container not found!');
+            return;
+        }
+        
+        container.appendChild(clone);
+        console.log('✅ Column added to container');
+        
+        // Wire up dynamic behavior for the newly added card
+        const lastCard = container.querySelector('.column-card:last-child');
+        if (!lastCard) {
+            console.error('❌ Last column card not found!');
+            return;
+        }
+        
+        console.log('✅ Last column card found:', lastCard);
+        
+        const dataTypeSelect = lastCard.querySelector('.data-type');
+        const distSelect = lastCard.querySelector('.distribution-type');
+        
+        if (!dataTypeSelect || !distSelect) {
+            console.error('❌ Data type or distribution select not found in column card');
+            return;
+        }
+        
+        console.log('✅ Data type and distribution selects found');
+        
+        // Update distribution options based on data type
+        const updateDistributionOptions = () => {
+            const dataType = dataTypeSelect.value;
+            const allowedDistributions = PARAMETER_CONFIG.dataTypeDistributions[dataType] || [];
+            
+            console.log(`🔄 Updating distribution options for ${dataType}:`, allowedDistributions);
+            
+            // Clear current options
+            distSelect.innerHTML = '';
+            
+            // Add allowed distributions
+            allowedDistributions.forEach(dist => {
+                const option = document.createElement('option');
+                option.value = dist;
+                option.textContent = dist.charAt(0) + dist.slice(1).toLowerCase();
+                distSelect.appendChild(option);
+            });
+            
+            // Update parameters for the selected distribution
+            updateParameterFields();
+        };
+        
+        // Update parameter fields based on distribution
+        const updateParameterFields = () => {
+            const dataType = dataTypeSelect.value;
+            const distribution = distSelect.value;
+            
+            console.log(`🔄 Updating parameter fields for ${dataType}/${distribution}`);
+            
+            // Clear existing parameter fields
+            const paramsSection = lastCard.querySelector('.parameters-section');
+            if (!paramsSection) {
+                console.error('❌ Parameters section not found');
+                return;
+            }
+            
+            paramsSection.innerHTML = '<h6 class="text-muted">Parameters</h6>';
+            
+            // Check for special date/time handling
+            if (dataType === 'date' || dataType === 'datetime') {
+                if (distribution === 'uniform' && PARAMETER_CONFIG.dateTimeHandling[dataType]) {
+                    const paramConfig = PARAMETER_CONFIG.dateTimeHandling[dataType][distribution];
+                    const requiredGroup = createParameterGroup('Required Parameters', paramConfig.required, paramConfig, true, dataType, distribution);
+                    paramsSection.appendChild(requiredGroup);
+                    return;
+                }
+            }
+            
+            // Handle text data types with specialized parameters (for both constant and categorical)
+            if (['email', 'address', 'name', 'phone'].includes(dataType) && (distribution === 'constant' || distribution === 'categorical')) {
+                const textParams = PARAMETER_CONFIG.dataTypeParameters[dataType];
+                
+                if (textParams) {
+                    const specializedGroup = createSpecializedParameterGroup('Specialized Parameters', textParams, dataType);
+                    paramsSection.appendChild(specializedGroup);
+                    
+                    // For categorical distribution, also show the categories field
+                    if (distribution === 'categorical') {
+                        const categoriesGroup = createParameterGroup('Distribution Parameters', ['categories'], {
+                            required: ['categories'],
+                            labels: {'categories': 'Categories (comma-separated)'},
+                            types: {'categories': 'text'}
+                        }, true, dataType, distribution);
+                        paramsSection.appendChild(categoriesGroup);
+                    }
+                    return;
+                }
+            }
+            
+            // Handle regular distributions
+            const paramConfig = PARAMETER_CONFIG.distributionParameters[distribution];
+            if (!paramConfig) {
+                paramsSection.innerHTML = '<h6 class="text-muted">Parameters</h6><p class="text-muted">No parameters required for this distribution</p>';
+                return;
+            }
+            
+            // Create parameter groups
+            const requiredGroup = createParameterGroup('Required Parameters', paramConfig.required, paramConfig, true, dataType, distribution);
+            const optionalGroup = createParameterGroup('Optional Parameters', paramConfig.optional, paramConfig, false, dataType, distribution);
+            
+            paramsSection.appendChild(requiredGroup);
+            if (paramConfig.optional.length > 0) {
+                paramsSection.appendChild(optionalGroup);
+            }
+        };
+        
+        // Wire up event listeners
+        dataTypeSelect.addEventListener('change', () => {
+            updateDistributionOptions();
+            // Also update parameter fields to show/hide min-max based on data type
+            updateParameterFieldsForColumn(lastCard, dataTypeSelect, distSelect);
+        });
+        distSelect.addEventListener('change', updateParameterFields);
+        
+        // Initialize parameters for the default distribution (normal)
+        updateParameterFields();
+        
+        console.log('✅ Event listeners wired up for column', columnCounter);
+        
+    } catch (error) {
+        console.error('❌ Error in addColumn:', error);
+    }
+}
+
+// Create parameter group
+const createParameterGroup = (title, params, config, isRequired, currentDataType, currentDistribution) => {
+    if (params.length === 0) return document.createElement('div');
+    
+    const group = document.createElement('div');
+    group.className = 'parameter-group';
+    group.innerHTML = `<h6 class="text-muted">${title}</h6>`;
+    
+    params.forEach(param => {
+        const paramDiv = document.createElement('div');
+        paramDiv.className = 'row mt-2';
+        
+        const label = config.labels[param];
+        const inputType = config.types[param];
+        const required = isRequired ? 'required' : '';
+        
+        // Get text type defaults if available
+        let defaultValue = '';
+        let placeholder = label;
+        
+        if (inputType === 'text' && currentDataType && currentDistribution) {
+            const textDefaults = PARAMETER_CONFIG.textTypeDefaults[currentDataType];
+            if (textDefaults && textDefaults[currentDistribution]) {
+                defaultValue = textDefaults[currentDistribution].default_value;
+                placeholder = textDefaults[currentDistribution].placeholder;
+            }
+        }
+        
+        if (inputType === 'text') {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <label class="form-label">${label}</label>
+                    <input type="text" class="form-control param-${param}" 
+                           placeholder="${placeholder}" 
+                           value="${defaultValue}"
+                           ${required}>
+                </div>
+            `;
+        } else if (inputType === 'date') {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <label class="form-label">${label}</label>
+                    <input type="date" class="form-control param-${param}" ${required}>
+                </div>
+            `;
+        } else if (inputType === 'datetime-local') {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <label class="form-label">${label}</label>
+                    <input type="datetime-local" class="form-control param-${param}" ${required}>
+                </div>
+            `;
+        } else {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <label class="form-label">${label}</label>
+                    <input type="number" class="form-control param-${param}" placeholder="${label}" step="any" ${required}>
+                </div>
+            `;
+        }
+        
+        group.appendChild(paramDiv);
+    });
+    
+    return group;
+};
+
+// Create specialized parameter group for text data types
+const createSpecializedParameterGroup = (title, params, dataType) => {
+    const group = document.createElement('div');
+    group.className = 'parameter-group';
+    group.innerHTML = `<h6 class="text-muted">${title}</h6>`;
+    
+    Object.keys(params).forEach(paramKey => {
+        const param = params[paramKey];
+        
+        const paramDiv = document.createElement('div');
+        paramDiv.className = 'row mt-2';
+        
+        if (param.type === 'select') {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <label class="form-label">${param.label}</label>
+                    <select class="form-control param-${paramKey}" data-param-type="specialized">
+                        ${param.options.map(opt => 
+                            `<option value="${opt.value}" ${opt.value === param.default ? 'selected' : ''}>${opt.text}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (param.type === 'checkbox') {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input param-${paramKey}" type="checkbox" 
+                               data-param-type="specialized" 
+                               ${param.default ? 'checked' : ''}>
+                        <label class="form-check-label">${param.label}</label>
+                        ${param.description ? `<small class="form-text text-muted d-block">${param.description}</small>` : ''}
+                    </div>
+                </div>
+            `;
+        } else if (param.type === 'text') {
+            paramDiv.innerHTML = `
+                <div class="col-12">
+                    <label class="form-label">${param.label}</label>
+                    <input type="text" class="form-control param-${paramKey}" 
+                           value="${param.default}" 
+                           data-param-type="specialized">
+                    ${param.description ? `<small class="form-text text-muted">${param.description}</small>` : ''}
+                </div>
+            `;
+        }
+        
+        group.appendChild(paramDiv);
+    });
+    
+    return group;
+};
+
+function removeColumn(button) {
+    button.closest('.column-card').remove();
+}
+
+function loadTemplates() {
+    // Prevent multiple calls
+    if (templatesLoaded) return;
+    
+    fetch('/api/templates')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById('templateSelect');
+                // Clear existing options except the first one
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+                // Add new options
+                data.templates.forEach(template => {
+                    const option = document.createElement('option');
+                    option.value = template.name;
+                    option.textContent = template.display_name;
+                    select.appendChild(option);
+                });
+                templatesLoaded = true;
+            }
+        })
+        .catch(error => console.error('Error loading templates:', error));
+}
+
+function generateData() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    // Show loading
+    loadingIndicator.classList.remove('d-none');
+    resultsContainer.innerHTML = '';
+    
+    // Build schema from form
+    const schema = buildSchema();
+    
+    // Prepare request data
+    const requestData = {
+        schema: schema,
+        n_samples: parseInt(document.getElementById('nSamples').value),
+        seed: document.getElementById('seed').value || null
+    };
+    
+    // Make API call
+    fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadingIndicator.classList.add('d-none');
+        
+        if (data.success) {
+            displayResults(data);
+            getStatistics(data.data);
+        } else {
+            showError(data.error);
+        }
+    })
+    .catch(error => {
+        loadingIndicator.classList.add('d-none');
+        showError('Failed to generate data: ' + error.message);
+    });
+}
+
+function buildSchema() {
+    const columns = [];
+    const columnCards = document.querySelectorAll('.column-card');
+    
+    columnCards.forEach(card => {
+        const column = {
+            name: card.querySelector('.column-name').value,
+            data_type: card.querySelector('.data-type').value,
+            distribution: card.querySelector('.distribution-type').value,
+            parameters: {},
+            unique: card.querySelector('.unique-check').checked,
+            nullable: card.querySelector('.nullable-check').checked,
+            null_probability: parseFloat(card.querySelector('.param-null_probability').value) || 0.0,
+            min_value: null,
+            max_value: null
+        };
+        
+        // Build parameters based on distribution
+        const distribution = column.distribution;
+        const dataType = column.data_type;
+        
+        if (distribution === 'uniform' && (dataType === 'date' || dataType === 'datetime')) {
+            // Handle date/time uniform distribution
+            const startParam = dataType === 'date' ? 'start_date' : 'start_datetime';
+            const endParam = dataType === 'date' ? 'end_date' : 'end_datetime';
+            
+            const startValue = card.querySelector(`.param-${startParam}`)?.value;
+            const endValue = card.querySelector(`.param-${endParam}`)?.value;
+            
+            if (startValue) column.parameters[startParam] = startValue;
+            if (endValue) column.parameters[endParam] = endValue;
+        } else if (distribution === 'constant' && ['email', 'address', 'name', 'phone'].includes(dataType)) {
+            // Handle specialized text parameters
+            const specializedInputs = card.querySelectorAll('[data-param-type="specialized"]');
+            specializedInputs.forEach(input => {
+                // Extract parameter name from class list
+                const classList = input.className.split(' ');
+                const paramClass = classList.find(cls => cls.startsWith('param-'));
+                if (paramClass) {
+                    const paramName = paramClass.replace('param-', '');
+                    if (input.type === 'checkbox') {
+                        column.parameters[paramName] = input.checked;
+                    } else {
+                        column.parameters[paramName] = input.value;
+                    }
+                }
+            });
+        } else if (distribution === 'categorical' && ['email', 'address', 'name', 'phone'].includes(dataType)) {
+            // Handle specialized text parameters for categorical distribution
+            const specializedInputs = card.querySelectorAll('[data-param-type="specialized"]');
+            specializedInputs.forEach(input => {
+                // Extract parameter name from class list
+                const classList = input.className.split(' ');
+                const paramClass = classList.find(cls => cls.startsWith('param-'));
+                if (paramClass) {
+                    const paramName = paramClass.replace('param-', '');
+                    if (input.type === 'checkbox') {
+                        column.parameters[paramName] = input.checked;
+                    } else {
+                        column.parameters[paramName] = input.value;
+                    }
+                }
+            });
+            
+            // Also get the categories parameter
+            const categoriesInput = card.querySelector('.param-categories');
+            if (categoriesInput && categoriesInput.value) {
+                column.parameters['categories'] = categoriesInput.value.split(',').map(cat => cat.trim());
+            }
+        } else {
+            // Handle regular distributions
+            const paramConfig = PARAMETER_CONFIG.distributionParameters[distribution];
+            if (paramConfig) {
+                const allParams = [...paramConfig.required, ...paramConfig.optional];
+                allParams.forEach(param => {
+                    const input = card.querySelector(`.param-${param}`);
+                    if (input && input.value) {
+                        if (param === 'categories') {
+                            // Split comma-separated categories
+                            column.parameters[param] = input.value.split(',').map(cat => cat.trim());
+                        } else if (param === 'value') {
+                            // Handle constant value based on data type
+                            if (['integer', 'float'].includes(dataType)) {
+                                column.parameters[param] = parseFloat(input.value);
+                            } else {
+                                column.parameters[param] = input.value;
+                            }
+                        } else {
+                            // Numeric parameters
+                            column.parameters[param] = parseFloat(input.value);
+                        }
+                    }
+                });
+            }
+        }
+        
+        columns.push(column);
+    });
+    
+    return { columns: columns };
+}
+
+function displayResults(data) {
+    const container = document.getElementById('resultsContainer');
+    
+    // Store data globally for export
+    window.currentGeneratedData = data.data;
+    window.currentGeneratedColumns = data.columns;
+    
+    // Also store in sessionStorage so Export page can load it
+    try {
+        const payload = {
+            data: data.data,
+            columns: data.columns,
+            shape: data.shape,
+            sample_size: data.sample_size
+        };
+        sessionStorage.setItem('generatedDataPayload', JSON.stringify(payload));
+    } catch (e) {
+        console.warn('Unable to store generated data in sessionStorage:', e);
+    }
+    
+    // Create table
+    let html = `
+        <div class="mb-3">
+            <h6>Generated ${data.sample_size} samples</h6>
+            <p class="text-muted">Shape: ${data.shape[0]} rows × ${data.shape[1]} columns</p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        ${data.columns.map(col => `<th>${col}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Add first 5 rows
+    data.data.slice(0, 5).forEach(row => {
+        html += '<tr>';
+        data.columns.forEach(col => {
+            html += `<td>${row[col] || ''}</td>`;
+        });
+        html += '</tr>';
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        ${data.data.length > 5 ? `<p class="text-muted mt-2">Showing first 5 rows of ${data.data.length} total rows</p>` : ''}
+        <div class="mt-3">
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-info text-white py-2">
+                    <h6 class="mb-0"><i class="fas fa-download me-2"></i>Export Options</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-4">
+                            <label class="form-label">Format</label>
+                            <select id="gen-export-format" class="form-select form-select-sm">
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                                <option value="excel">Excel (.xlsx)</option>
+                                <option value="parquet">Parquet</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-5">
+                            <label class="form-label">Filename</label>
+                            <input id="gen-export-filename" type="text" class="form-control form-control-sm" value="synthetic_data">
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="form-check mt-4">
+                                <input id="gen-export-ts" class="form-check-input" type="checkbox" checked>
+                                <label class="form-check-label">Include date</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-info btn-sm" onclick="exportGeneratedData()">
+                            <i class="fas fa-download me-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function getStatistics(data) {
+    fetch('/api/statistics', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: data })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayStatistics(data.statistics);
+        }
+    })
+    .catch(error => console.error('Error getting statistics:', error));
+}
+
+function displayStatistics(stats) {
+    const container = document.getElementById('statisticsContainer');
+    
+    let html = `
+        <div class="row">
+            <div class="col-6">
+                <small class="text-muted">Rows</small>
+                <h6>${stats.shape[0]}</h6>
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Columns</small>
+                <h6>${stats.shape[1]}</h6>
+            </div>
+        </div>
+    `;
+    
+    if (Object.keys(stats.numeric_stats).length > 0) {
+        html += '<hr><h6>Numeric Statistics</h6>';
+        Object.keys(stats.numeric_stats).forEach(col => {
+            const colStats = stats.numeric_stats[col];
+            html += `
+                <div class="mb-2">
+                    <small class="text-muted">${col}</small>
+                    <div>Mean: ${colStats.mean?.toFixed(2) || 'N/A'}</div>
+                    <div>Std: ${colStats.std?.toFixed(2) || 'N/A'}</div>
+                </div>
+            `;
+        });
+    }
+    
+    container.innerHTML = html;
+}
+
+function showError(message) {
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
+
+function exportData(format) {
+    if (!window.currentGeneratedData || !window.currentGeneratedColumns) {
+        alert('No data to export. Please generate data first.');
+        return;
+    }
+    
+    const data = window.currentGeneratedData;
+    const columns = window.currentGeneratedColumns;
+    
+    if (format === 'csv') {
+        // Create CSV content
+        const csvContent = [
+            columns.join(','), // Header row
+            ...data.map(row => 
+                columns.map(col => {
+                    const value = row[col];
+                    // Handle values that need quotes (contains comma, quote, or newline)
+                    if (value === null || value === undefined) return '';
+                    const strValue = String(value);
+                    if (strValue.includes(',') || strValue.includes('"') || strValue.includes('\n')) {
+                        return `"${strValue.replace(/"/g, '""')}"`;
+                    }
+                    return strValue;
+                }).join(',')
+            )
+        ].join('\n');
+        
+        // Create and download file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `synthetic_data_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        
+    } else if (format === 'json') {
+        // Create JSON content
+        const jsonContent = JSON.stringify(data, null, 2);
+        
+        // Create and download file
+        const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `synthetic_data_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+}
+
+function exportGeneratedData() {
+    if (!window.currentGeneratedData || !Array.isArray(window.currentGeneratedData) || window.currentGeneratedData.length === 0) {
+        showError('No data to export. Please generate data first.');
+        return;
+    }
+    
+    const format = document.getElementById('gen-export-format').value;
+    const base = document.getElementById('gen-export-filename').value || 'synthetic_data';
+    const includeTs = document.getElementById('gen-export-ts').checked;
+    const filename = includeTs ? `${base}_${new Date().toISOString().slice(0,10)}` : base;
+    
+    console.log('🔄 Starting export...', { format, filename, dataLength: window.currentGeneratedData.length });
+    
+    // Show loading state
+    const exportBtn = document.querySelector('button[onclick="exportGeneratedData()"]');
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Exporting...';
+    exportBtn.disabled = true;
+    
+    fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            data: window.currentGeneratedData, 
+            format: format, 
+            filename: filename 
+        })
+    }).then(async (res) => {
+        console.log('📡 Export response received:', res.status, res.statusText);
+        
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error('❌ Export failed with status:', res.status, err);
+            throw new Error(err.error || `HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        // Check if response has content
+        const contentLength = res.headers.get('Content-Length');
+        console.log('📊 Response content length:', contentLength);
+        
+        // Receive file download
+        const blob = await res.blob();
+        console.log('📦 Blob received:', blob.size, 'bytes, type:', blob.type);
+        
+        if (blob.size === 0) {
+            throw new Error('Received empty file from server');
+        }
+        
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const suggested = (disposition.match(/filename="?(.+?)"?$/) || [])[1];
+        const ext = format === 'excel' ? 'xlsx' : format;
+        const finalName = suggested || `${filename}.${ext}`;
+        
+        console.log('💾 Downloading file:', finalName);
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = finalName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        console.log('✅ Export completed successfully');
+        
+    }).catch((e) => {
+        console.error('❌ Export error:', e);
+        showError('Failed to export: ' + e.message);
+    }).finally(() => {
+        // Restore button state
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+    });
+}
+
+// Removed quickExportFromGenerator; single Export button respects selected format
+
+function goToExport() {
+    // Ensure latest data is in sessionStorage
+    try {
+        const payload = {
+            data: window.currentGeneratedData || [],
+            columns: window.currentGeneratedColumns || [],
+            timestamp: new Date().toISOString()
+        };
+        sessionStorage.setItem('generatedDataPayload', JSON.stringify(payload));
+    } catch (e) {
+        console.warn('Unable to persist generated data before navigation:', e);
+    }
+    // Navigate to export page
+    window.location.href = '/export';
+}
+// Template loading
+document.getElementById('templateSelect').addEventListener('change', function() {
+    const templateName = this.value;
+    if (templateName) {
+        loadTemplate(templateName);
+    }
+});
+
+function loadTemplate(templateName) {
+    fetch(`/api/templates/${templateName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                applyTemplate(data.schema);
+            }
+        })
+        .catch(error => console.error('Error loading template:', error));
+}
+
+function applyTemplate(schema) {
+    // Clear existing columns
+    document.getElementById('columnsContainer').innerHTML = '';
+    columnCounter = 0;
+    
+    // Add columns from template
+    schema.columns.forEach(column => {
+        addColumn();
+        const lastCard = document.querySelector('.column-card:last-child');
+        
+        // Fill in the values
+        const nameInput = lastCard.querySelector('.column-name');
+        const dataTypeSelect = lastCard.querySelector('.data-type');
+        const distSelect = lastCard.querySelector('.distribution-type');
+        if (nameInput) nameInput.value = column.name;
+        if (dataTypeSelect) dataTypeSelect.value = column.data_type;
+        if (distSelect) distSelect.value = column.distribution;
+        
+        if (column.unique) lastCard.querySelector('.unique-check').checked = true;
+        if (column.nullable !== undefined) lastCard.querySelector('.nullable-check').checked = column.nullable;
+        
+        // Ensure parameter fields are rendered based on data type and distribution
+        if (dataTypeSelect && distSelect) {
+            updateDistributionOptionsForColumn(lastCard, dataTypeSelect, distSelect);
+            updateParameterFieldsForColumn(lastCard, dataTypeSelect, distSelect);
+        }
+        
+        // Fill parameters after the parameter fields are created
+        setTimeout(() => {
+            if (column.parameters) {
+                Object.keys(column.parameters).forEach(param => {
+                    const input = lastCard.querySelector(`.param-${param}`);
+                    if (input) {
+                        if (param === 'categories' && Array.isArray(column.parameters[param])) {
+                            input.value = column.parameters[param].join(', ');
+                        } else {
+                            input.value = column.parameters[param];
+                        }
+                    }
+                });
+            }
+            
+            // Handle min/max for numerical types if provided
+            if (['integer', 'float'].includes(column.data_type)) {
+                if (column.min_value !== null && column.min_value !== undefined) {
+                    const minInput = lastCard.querySelector('.param-min');
+                    if (minInput) minInput.value = column.min_value;
+                }
+                if (column.max_value !== null && column.max_value !== undefined) {
+                    const maxInput = lastCard.querySelector('.param-max');
+                    if (maxInput) maxInput.value = column.max_value;
+                }
+            }
+            
+            // Set null probability if present
+            if (column.null_probability !== null && column.null_probability !== undefined) {
+                const nullProbInput = lastCard.querySelector('.param-null_probability');
+                if (nullProbInput) nullProbInput.value = column.null_probability;
+            }
+        }, 100);
+    });
+}
+</script>
+{% endblock %}

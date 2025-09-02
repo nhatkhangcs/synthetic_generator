@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Data Export - Synthetic Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-download text-info me-2"></i>
+                Data Export
+            </h2>
+            <p class="lead text-muted">
+                Export your generated data in various formats for use in different applications 
+                and analysis tools.
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Export Options -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>Export Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="exportFormat" class="form-label">Export Format</label>
+                        <select class="form-select" id="exportFormat">
+                            <option value="csv">CSV (Comma Separated Values)</option>
+                            <option value="json">JSON (JavaScript Object Notation)</option>
+                            <option value="excel">Excel (.xlsx)</option>
+                            <option value="parquet">Parquet (Columnar Format)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="filename" class="form-label">Filename</label>
+                        <input type="text" class="form-control" id="filename" 
+                               value="synthetic_data" placeholder="Enter filename without extension">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="includeTimestamp" class="form-label">Include Timestamp</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeTimestamp" checked>
+                            <label class="form-check-label" for="includeTimestamp">
+                                Add timestamp to filename
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="compression" class="form-label">Compression</label>
+                        <select class="form-select" id="compression">
+                            <option value="none">None</option>
+                            <option value="gzip">Gzip (.gz)</option>
+                            <option value="zip">ZIP Archive</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" class="btn btn-info btn-lg w-100" id="exportBtn">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export History -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Export History
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="exportHistory">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-history fa-3x mb-3"></i>
+                            <p>No export history yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Export Templates -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Export
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="quickExport('csv')">
+                                <i class="fas fa-file-csv me-1"></i>CSV
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="quickExport('json')">
+                                <i class="fas fa-file-code me-1"></i>JSON
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-success w-100" onclick="quickExport('excel')">
+                                <i class="fas fa-file-excel me-1"></i>Excel
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-success w-100" onclick="quickExport('parquet')">
+                                <i class="fas fa-database me-1"></i>Parquet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let exportHistory = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    loadExportHistory();
+    tryLoadGeneratedData();
+});
+
+function setupEventListeners() {
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+    
+    // Update filename when format changes
+    document.getElementById('exportFormat').addEventListener('change', updateFilename);
+    
+    // Update filename when timestamp checkbox changes
+    document.getElementById('includeTimestamp').addEventListener('change', updateFilename);
+}
+
+function updateFilename() {
+    const format = document.getElementById('exportFormat').value;
+    const includeTimestamp = document.getElementById('includeTimestamp').checked;
+    const baseFilename = document.getElementById('filename').value || 'synthetic_data';
+    
+    let filename = baseFilename;
+    
+    if (includeTimestamp) {
+        const timestamp = new Date().toISOString().split('T')[0];
+        filename += `_${timestamp}`;
+    }
+    
+    filename += `.${format}`;
+    
+    // Show preview
+    const filenameInput = document.getElementById('filename');
+    filenameInput.value = baseFilename;
+    
+    // Update the actual filename for export
+    filenameInput.dataset.fullFilename = filename;
+}
+
+function exportData() {
+    const format = document.getElementById('exportFormat').value;
+    const filename = document.getElementById('filename').dataset.fullFilename || 
+                    document.getElementById('filename').value + '.' + format;
+    const compression = document.getElementById('compression').value;
+    
+    // Check if we have data to export
+    if (!currentData || currentData.length === 0) {
+        utils.showNotification('No data available for export. Please generate some data first.', 'error');
+        return;
+    }
+    
+    // Show loading
+    const exportBtn = document.getElementById('exportBtn');
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Exporting...';
+    exportBtn.disabled = true;
+    
+    // Simulate export process
+    setTimeout(() => {
+        // Add to history
+        addToExportHistory(format, filename, currentData.length);
+        
+        // Trigger download
+        downloadMockFile(format, filename);
+        
+        // Reset button
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+        
+        utils.showNotification(`Data exported successfully as ${filename}!`, 'success');
+    }, 1500);
+}
+
+function quickExport(format) {
+    // Set format and export
+    document.getElementById('exportFormat').value = format;
+    updateFilename();
+    exportData();
+}
+
+function downloadMockFile(format, filename) {
+    let content = '';
+    let mimeType = '';
+    
+    switch (format) {
+        case 'csv':
+            content = generateMockCSV();
+            mimeType = 'text/csv';
+            break;
+        case 'json':
+            content = JSON.stringify(generateMockData(), null, 2);
+            mimeType = 'application/json';
+            break;
+        case 'excel':
+            content = 'Mock Excel content - would be actual Excel file';
+            mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            break;
+        case 'parquet':
+            content = 'Mock Parquet content - would be actual Parquet file';
+            mimeType = 'application/octet-stream';
+            break;
+    }
+    
+    utils.downloadFile(content, filename, mimeType);
+}
+
+function generateMockData() {
+    return [
+        { id: 1, name: 'John Doe', age: 30, email: 'john@example.com' },
+        { id: 2, name: 'Jane Smith', age: 25, email: 'jane@example.com' },
+        { id: 3, name: 'Bob Johnson', age: 35, email: 'bob@example.com' }
+    ];
+}
+
+function generateMockCSV() {
+    return `id,name,age,email
+1,John Doe,30,john@example.com
+2,Jane Smith,25,jane@example.com
+3,Bob Johnson,35,bob@example.com`;
+}
+
+function addToExportHistory(format, filename, rowCount) {
+    const exportRecord = {
+        id: Date.now(),
+        format: format,
+        filename: filename,
+        rowCount: rowCount,
+        timestamp: new Date().toISOString(),
+        size: Math.floor(Math.random() * 1000) + 100 // Mock file size
+    };
+    
+    exportHistory.unshift(exportRecord);
+    
+    // Keep only last 10 exports
+    if (exportHistory.length > 10) {
+        exportHistory = exportHistory.slice(0, 10);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('exportHistory', JSON.stringify(exportHistory));
+    
+    // Update display
+    displayExportHistory();
+}
+
+function loadExportHistory() {
+    const saved = localStorage.getItem('exportHistory');
+    if (saved) {
+        exportHistory = JSON.parse(saved);
+        displayExportHistory();
+    }
+}
+
+function displayExportHistory() {
+    const container = document.getElementById('exportHistory');
+    
+    if (exportHistory.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-history fa-3x mb-3"></i>
+                <p>No export history yet</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    exportHistory.forEach(record => {
+        const date = new Date(record.timestamp).toLocaleDateString();
+        const time = new Date(record.timestamp).toLocaleTimeString();
+        
+        html += `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                <div>
+                    <div class="fw-bold">${record.filename}</div>
+                    <small class="text-muted">
+                        ${record.format.toUpperCase()} • ${record.rowCount} rows • ${utils.formatBytes(record.size)}
+                    </small>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">${date}</small><br>
+                    <small class="text-muted">${time}</small>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Load generated data from sessionStorage if present
+function tryLoadGeneratedData() {
+    try {
+        const raw = sessionStorage.getItem('generatedDataPayload');
+        if (!raw) return;
+        const payload = JSON.parse(raw);
+        if (payload && Array.isArray(payload.data)) {
+            // Populate globals used by export page
+            window.currentData = payload.data;
+            window.currentGeneratedData = payload.data; // for compatibility
+            window.currentGeneratedColumns = payload.columns || (payload.data.length > 0 ? Object.keys(payload.data[0]) : []);
+            // Provide a quick preview notification
+            utils.showNotification(`Loaded ${payload.data.length} rows from Generator. Ready to export.`, 'success');
+            // Set a sensible default filename with date
+            updateFilename();
+        }
+    } catch (e) {
+        console.warn('Failed to load generated data from sessionStorage:', e);
+    }
+}
+</script>
+{% endblock %}

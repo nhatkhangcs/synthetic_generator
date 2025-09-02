@@ -1,0 +1,101 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>=75.1.0",
+    "wheel>=0.44.0",
+]
+
+[project]
+name = "synthetic-generator"
+authors = [
+    { name = "Vo Hoang Nhat Khang", email = "nhatkhangcs@gmail.com" },
+]
+maintainers = [
+    { name = "Vo Hoang Nhat Khang", email = "nhatkhangcs@gmail.com" },
+]
+description = "Synthetic Data Generator for Machine Learning Pipelines"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.8,<=3.14"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    'Development Status :: 1 - Planning',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Education',
+    'Intended Audience :: End Users/Desktop',
+    'Intended Audience :: Financial and Insurance Industry',
+    'Intended Audience :: Healthcare Industry',
+    'Intended Audience :: Science/Research',
+    'Intended Audience :: Telecommunications Industry',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3 :: Only',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: Implementation',
+    'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'Topic :: Software Development',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+dynamic = [
+    "version",
+    "dependencies",
+    "optional-dependencies",
+]
+
+[project.license]
+file = "LICENSE.txt"
+
+[project.urls]
+Homepage = "https://github.com/nhatkhangcs/synthetic_generator"
+Repository = "https://github.com/nhatkhangcs/synthetic_generator"
+
+[tool.setuptools.dynamic]
+version = { attr = "synthetic_generator.__version__" }
+dependencies = { file = ["./requirements/requirements.txt"] }
+optional-dependencies.dev = { file = ["./requirements/requirements-dev.txt"] }
+optional-dependencies.test = { file = ["./requirements/requirements-test.txt"] }
+optional-dependencies.web = { file = ["./requirements/requirements-web.txt"] }
+
+[tool.setuptools.package-data]
+"*" = [
+    "VERSION",
+    "*.pyi",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["synthetic_generator*"]
+
+[project.scripts]
+synthetic-generator = "synthetic_generator.cli:main"
+
+#[tool.pytest.ini_options]
+#mccabe-complexity = 10
+#
+#[tool.pytest]
+#norecursedirs = "tests/helpers"
+#
+#[tool.pylint]
+#max-locals = 15
+#max-returns = 6
+#max-branches = 12
+#max-statements = 50
+#max-parents = 7
+#max-attributes = 7
+#min-public-methods = 2
+#max-public-methods = 20
+#max-module-lines = 1000
+#max-line-length = 120
+#disable = [
+#    "W0511", # fixme
+#    "W0311", # bad-indentation
+#    "C0330", # bad-continuation
+#    "R0903", # too-few-public-methods
+#]
+
+#[tool.coverage.run]
+#branch = true
+#source = ["src"]
+#omit = ["*/examples/*", "*setup.py", "*/build/*"]

@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}About - Synthetic Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="display-4 mb-3">
+                    <i class="fas fa-database text-primary me-3"></i>
+                    About Synthetic Generator
+                </h1>
+                <p class="lead text-muted">
+                    A comprehensive Python library for generating high-quality synthetic data
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Overview -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">Key Features</h3>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                    <h5>Multiple Distributions</h5>
+                    <p>Support for Normal, Uniform, Exponential, Gamma, Beta, Weibull, Poisson, Binomial, and more.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-link fa-3x text-success mb-3"></i>
+                    <h5>Correlations & Dependencies</h5>
+                    <p>Define relationships between variables and generate data with realistic correlations.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-shield-alt fa-3x text-info mb-3"></i>
+                    <h5>Data Quality</h5>
+                    <p>Built-in data validation and quality checks to ensure generated data meets your requirements.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technical Details -->
+    <div class="row mb-5">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>Technical Specifications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <strong>Python Version:</strong> 3.8+
+                        </li>
+                        <li class="mb-2">
+                            <strong>Core Dependencies:</strong> pandas, pydantic, numpy, scipy
+                        </li>
+                        <li class="mb-2">
+                            <strong>Web UI:</strong> Flask, Bootstrap 5, JavaScript
+                        </li>
+                        <li class="mb-2">
+                            <strong>License:</strong> MIT License
+                        </li>
+                        <li class="mb-2">
+                            <strong>Version:</strong> 0.1.7
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Supported Data Types
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <h6>Numeric</h6>
+                            <ul class="list-unstyled">
+                                <li>• Integer</li>
+                                <li>• Float</li>
+                            </ul>
+                        </div>
+                        <div class="col-6">
+                            <h6>Text</h6>
+                            <ul class="list-unstyled">
+                                <li>• String</li>
+                                <li>• Email</li>
+                                <li>• Phone</li>
+                                <li>• Address</li>
+                                <li>• Name</li>
+                            </ul>
+                        </div>
+                        <div class="col-6">
+                            <h6>Categorical</h6>
+                            <ul class="list-unstyled">
+                                <li>• Categorical</li>
+                                <li>• Boolean</li>
+                            </ul>
+                        </div>
+                        <div class="col-6">
+                            <h6>Temporal</h6>
+                            <ul class="list-unstyled">
+                                <li>• Date</li>
+                                <li>• DateTime</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Use Cases -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">Use Cases</h3>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                    <h6>Customer Data</h6>
+                    <small class="text-muted">Generate realistic customer profiles for testing and development</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-heartbeat fa-2x text-success mb-2"></i>
+                    <h6>Medical Data</h6>
+                    <small class="text-muted">Create synthetic patient data for research and testing</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                    <h6>Financial Data</h6>
+                    <small class="text-muted">Generate transaction data with realistic patterns and amounts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-shopping-cart fa-2x text-info mb-2"></i>
+                    <h6>E-commerce Data</h6>
+                    <small class="text-muted">Create order and product data for testing e-commerce systems</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Getting Started -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-rocket me-2"></i>Getting Started
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Installation</h6>
+                            <div class="code-block">
+                                <code>pip install synthetic-generator</code>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Quick Start</h6>
+                            <div class="code-block">
+                                <code>from synthetic_generator import generate_data, DataSchema</code><br>
+                                <code># Define schema and generate data</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact & Links -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Developer
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6>Vo Hoang Nhat Khang</h6>
+                    <p class="text-muted">Maintainer & Developer</p>
+                    <div class="d-flex gap-2">
+                        <a href="mailto:nhatkhangdtp@gmail.com" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-envelope me-1"></i>Email
+                        </a>
+                        <a href="https://github.com/nhatkhangcs" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm">
+                            <i class="fab fa-github me-1"></i>GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-link me-2"></i>Links
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="https://pypi.org/project/synthetic-generator/" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+                            <i class="fab fa-python me-1"></i>PyPI Package
+                        </a>
+                        <a href="https://github.com/nhatkhangcs/syngen" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm">
+                            <i class="fab fa-github me-1"></i>Source Code
+                        </a>
+                        <a href="/docs" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-book me-1"></i>Documentation
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

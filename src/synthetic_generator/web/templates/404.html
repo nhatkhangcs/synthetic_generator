@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - Synthetic Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="mb-5">
+                <h1 class="display-1 text-muted">404</h1>
+                <h2 class="mb-3">Page Not Found</h2>
+                <p class="lead text-muted">
+                    The page you're looking for doesn't exist or has been moved.
+                </p>
+            </div>
+            
+            <div class="mb-4">
+                <i class="fas fa-search fa-3x text-primary mb-3"></i>
+                <p class="text-muted">Let's help you find what you're looking for</p>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <a href="{{ url_for('generator') }}" class="btn btn-outline-success w-100">
+                        <i class="fas fa-magic me-2"></i>Generator
+                    </a>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <a href="{{ url_for('templates') }}" class="btn btn-outline-info w-100">
+                        <i class="fas fa-layer-group me-2"></i>Templates
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

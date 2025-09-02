@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Templates - Synthetic Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-layer-group text-primary me-2"></i>
+                Pre-built Templates
+            </h2>
+            <p class="lead text-muted">
+                Choose from our collection of pre-built templates for common use cases.
+                Each template includes realistic data schemas with appropriate distributions and constraints.
+            </p>
+        </div>
+    </div>
+
+    <!-- Template Categories -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="category" id="all" value="all" checked>
+                <label class="btn btn-outline-primary" for="all">All</label>
+                
+                <input type="radio" class="btn-check" name="category" id="business" value="Business">
+                <label class="btn btn-outline-primary" for="business">Business</label>
+                
+                <input type="radio" class="btn-check" name="category" id="healthcare" value="Healthcare">
+                <label class="btn btn-outline-primary" for="healthcare">Healthcare</label>
+                
+                <input type="radio" class="btn-check" name="category" id="finance" value="Finance">
+                <label class="btn btn-outline-primary" for="finance">Finance</label>
+                
+                <input type="radio" class="btn-check" name="category" id="ecommerce" value="E-commerce">
+                <label class="btn btn-outline-primary" for="ecommerce">E-commerce</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates Grid -->
+    <div class="row" id="templatesGrid">
+        <!-- Templates will be loaded here dynamically -->
+    </div>
+
+    <!-- Template Details Modal -->
+    <div class="modal fade" id="templateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="templateModalTitle">Template Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="templateDetails">
+                        <!-- Template details will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="useTemplateBtn">
+                        <i class="fas fa-magic me-2"></i>Use This Template
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let templates = [];
+let selectedTemplate = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTemplates();
+    setupCategoryFilter();
+});
+
+function loadTemplates() {
+    const grid = document.getElementById('templatesGrid');
+    ui.showLoading(grid, 'Loading templates...');
+    
+    templateManager.getTemplates()
+        .then(data => {
+            templates = data;
+            displayTemplates(data);
+        })
+        .catch(error => {
+            ui.showError(grid, error.message);
+        });
+}
+
+function displayTemplates(templates) {
+    const grid = document.getElementById('templatesGrid');
+    
+    if (templates.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12">
+                <div class="text-center text-muted">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>No templates found</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    templates.forEach(template => {
+        html += createTemplateCard(template);
+    });
+    
+    grid.innerHTML = html;
+}
+
+function createTemplateCard(template) {
+    const categoryClass = getCategoryClass(template.category);
+    
+    return `
+        <div class="col-md-6 col-lg-4 mb-4 template-card" data-category="${template.category}">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="template-icon ${categoryClass}">
+                            <i class="fas ${getTemplateIcon(template.name)} fa-2x"></i>
+                        </div>
+                        <span class="badge ${categoryClass}">${template.category}</span>
+                    </div>
+                    
+                    <h5 class="card-title">${template.display_name}</h5>
+                    <p class="card-text text-muted">${template.description}</p>
+                    
+                    <div class="mt-auto">
+                        <button class="btn btn-outline-primary btn-sm me-2" 
+                                onclick="viewTemplateDetails('${template.name}')">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </button>
+                        <button class="btn btn-primary btn-sm" 
+                                onclick="useTemplate('${template.name}')">
+                            <i class="fas fa-magic me-1"></i>Use Template
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getCategoryClass(category) {
+    const classes = {
+        'Business': 'bg-primary',
+        'Healthcare': 'bg-success',
+        'Finance': 'bg-warning',
+        'E-commerce': 'bg-info'
+    };
+    return classes[category] || 'bg-secondary';
+}
+
+function getTemplateIcon(templateName) {
+    const icons = {
+        'customer_data': 'fa-users',
+        'medical_data': 'fa-heartbeat',
+        'financial_data': 'fa-chart-line',
+        'ecommerce_data': 'fa-shopping-cart'
+    };
+    return icons[templateName] || 'fa-database';
+}
+
+function setupCategoryFilter() {
+    const categoryInputs = document.querySelectorAll('input[name="category"]');
+    categoryInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const selectedCategory = this.value;
+            filterTemplates(selectedCategory);
+        });
+    });
+}
+
+function filterTemplates(category) {
+    const cards = document.querySelectorAll('.template-card');
+    
+    cards.forEach(card => {
+        if (category === 'all' || card.dataset.category === category) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function viewTemplateDetails(templateName) {
+    selectedTemplate = templateName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+    const detailsContainer = document.getElementById('templateDetails');
+    const title = document.getElementById('templateModalTitle');
+    
+    ui.showLoading(detailsContainer, 'Loading template details...');
+    
+    templateManager.getTemplate(templateName)
+        .then(schema => {
+            title.textContent = `Template: ${templateName.replace('_', ' ').toUpperCase()}`;
+            displayTemplateDetails(schema, detailsContainer);
+            modal.show();
+        })
+        .catch(error => {
+            ui.showError(detailsContainer, error.message);
+        });
+}
+
+function displayTemplateDetails(schema, container) {
+    let html = `
+        <div class="mb-4">
+            <h6>Schema Overview</h6>
+            <p class="text-muted">This template includes ${schema.columns.length} columns with realistic data distributions.</p>
+        </div>
+        
+        <div class="mb-4">
+            <h6>Columns</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Distribution</th>
+                            <th>Constraints</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    schema.columns.forEach(column => {
+        const constraints = [];
+        if (column.min_value !== null) constraints.push(`Min: ${column.min_value}`);
+        if (column.max_value !== null) constraints.push(`Max: ${column.max_value}`);
+        if (column.unique) constraints.push('Unique');
+        
+        html += `
+            <tr>
+                <td><code>${column.name}</code></td>
+                <td><span class="badge bg-secondary">${column.data_type}</span></td>
+                <td><span class="badge bg-info">${column.distribution}</span></td>
+                <td>${constraints.join(', ') || 'None'}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <h6>Sample Data Preview</h6>
+            <p class="text-muted">Click "Use Template" to generate sample data and see how it looks.</p>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function useTemplate(templateName) {
+    // Redirect to generator page with template pre-loaded
+    window.location.href = `/generator?template=${templateName}`;
+}
+
+// Handle template usage from modal
+document.getElementById('useTemplateBtn').addEventListener('click', function() {
+    if (selectedTemplate) {
+        useTemplate(selectedTemplate);
+    }
+});
+</script>
+{% endblock %}

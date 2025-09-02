@@ -1,0 +1,8 @@
+setuptools>=75.1.0
+wheel>=0.44.0
+twine
+build
+pylint==2.17.7
+mypy==1.4.1
+jupyter>=1.1.1
+pytest==8.3.3

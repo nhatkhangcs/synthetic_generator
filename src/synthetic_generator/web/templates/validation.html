@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}Data Validation - Synthetic Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-check-circle text-success me-2"></i>
+                Data Validation
+            </h2>
+            <p class="lead text-muted">
+                Validate your data for quality and consistency. Upload a schema file for schema-based validation, 
+                or validate without a schema for basic data quality checks.
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Validation Form -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>Upload Data & Schema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label class="form-label">Data File</label>
+                        <div class="file-upload-area" id="dataUploadArea">
+                            <i class="fas fa-table fa-2x text-muted mb-2"></i>
+                            <h6>Upload your data file</h6>
+                            <small class="text-muted">CSV, JSON, Excel, Parquet</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Schema File (Optional)</label>
+                        <div class="file-upload-area" id="schemaUploadArea">
+                            <i class="fas fa-cogs fa-2x text-muted mb-2"></i>
+                            <h6>Upload schema file</h6>
+                            <small class="text-muted">JSON format</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="validationType" class="form-label">Validation Mode</label>
+                        <select class="form-select" id="validationType" disabled>
+                            <option value="auto">Auto-detect (Schema if available, Basic if not)</option>
+                        </select>
+                        <small class="text-muted">Validation mode is automatically determined based on whether a schema file is provided</small>
+                    </div>
+                    
+                    <button type="button" class="btn btn-success btn-lg w-100" id="validateBtn" disabled>
+                        <i class="fas fa-check-circle me-2"></i>Validate Data
+                    </button>
+                    <small class="text-muted mt-2 d-block">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <span id="validationMode">Upload data to see validation mode</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Validation Results
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="validationResults">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                            <p>Upload data to see validation results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Summary -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="validationSummary">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-list fa-2x mb-2"></i>
+                            <p>Validation summary will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let uploadedData = null;
+let uploadedSchema = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    setupFileUploads();
+    setupEventListeners();
+});
+
+function setupFileUploads() {
+    const dataUploadArea = document.getElementById('dataUploadArea');
+    const schemaUploadArea = document.getElementById('schemaUploadArea');
+    
+    fileHandler.setupDragAndDrop(dataUploadArea, function(file) {
+        handleDataUpload(file);
+    });
+    
+    fileHandler.setupDragAndDrop(schemaUploadArea, function(file) {
+        handleSchemaUpload(file);
+    });
+}
+
+function setupEventListeners() {
+    document.getElementById('validateBtn').addEventListener('click', validateData);
+}
+
+function handleDataUpload(file) {
+    try {
+        fileHandler.validateFile(file);
+        uploadedData = file;
+        
+        const uploadArea = document.getElementById('dataUploadArea');
+        uploadArea.innerHTML = `
+            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+            <h6>Data file uploaded</h6>
+            <small class="text-muted">${file.name}</small>
+        `;
+        
+        checkValidationReady();
+        utils.showNotification(`Data file "${file.name}" uploaded successfully!`, 'success');
+        
+    } catch (error) {
+        utils.showNotification(error.message, 'error');
+    }
+}
+
+function handleSchemaUpload(file) {
+    try {
+        if (!file.name.endsWith('.json')) {
+            throw new Error('Schema file must be in JSON format');
+        }
+        
+        uploadedSchema = file;
+        
+        const uploadArea = document.getElementById('schemaUploadArea');
+        uploadArea.innerHTML = `
+            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+            <h6>Schema file uploaded</h6>
+            <small class="text-muted">${file.name}</small>
+        `;
+        
+        checkValidationReady();
+        utils.showNotification(`Schema file "${file.name}" uploaded successfully!`, 'success');
+        
+    } catch (error) {
+        utils.showNotification(error.message, 'error');
+    }
+}
+
+function checkValidationReady() {
+    const validateBtn = document.getElementById('validateBtn');
+    const validationMode = document.getElementById('validationMode');
+    
+    if (!uploadedData) {
+        validateBtn.disabled = true;
+        validationMode.textContent = 'Upload data to see validation mode';
+        return;
+    }
+    
+    validateBtn.disabled = false;
+    
+    if (uploadedSchema) {
+        validationMode.textContent = 'Schema-based validation will be performed';
+    } else {
+        validationMode.textContent = 'Basic data quality validation will be performed';
+    }
+}
+
+function validateData() {
+    if (!uploadedData) {
+        utils.showNotification('Please upload a data file first', 'error');
+        return;
+    }
+    
+    const validationType = document.getElementById('validationType').value;
+    const resultsContainer = document.getElementById('validationResults');
+    const summaryContainer = document.getElementById('validationSummary');
+    
+    ui.showLoading(resultsContainer, 'Validating data...');
+    ui.showLoading(summaryContainer, 'Analyzing...');
+
+    // Send files directly to backend using multipart form-data
+    (async () => {
+        try {
+            const form = new FormData();
+            form.append('data_file', uploadedData, uploadedData.name);
+            if (uploadedSchema) {
+                form.append('schema_file', uploadedSchema, uploadedSchema.name);
+            }
+            // Note: validation_type is not used by backend - validation mode is auto-detected
+
+            const resp = await fetch('/api/validate', {
+                method: 'POST',
+                body: form
+            });
+
+            const contentType = resp.headers.get('content-type') || '';
+            let payload = null;
+            if (contentType.includes('application/json')) {
+                payload = await resp.json();
+            } else {
+                const text = await resp.text();
+                throw new Error(text || 'Validation failed');
+            }
+
+            if (!resp.ok || !payload.success) {
+                const message = (payload && (payload.error || payload.message)) || 'Validation failed';
+                throw new Error(message);
+            }
+
+            if (payload.validation) {
+                console.log('Validation results received:', payload.validation);
+                console.log('Displaying validation results...');
+                displayValidationResults(payload.validation, resultsContainer);
+                console.log('Displaying validation summary...');
+                displayValidationSummary(payload.validation, summaryContainer);
+            } else {
+                throw new Error('No validation results received from server');
+            }
+        } catch (err) {
+            ui.showError(resultsContainer, err.message || String(err));
+            ui.showError(summaryContainer, err.message || String(err));
+        }
+    })();
+}
+
+// Removed mock generator
+
+function displayValidationResults(results, container) {
+    // Ensure results is an object
+    if (!results || typeof results !== 'object') {
+        container.innerHTML = '<div class="alert alert-danger">Invalid validation results format</div>';
+        return;
+    }
+    
+    let html = `
+        <div class="mb-3">
+            <div class="d-flex align-items-center mb-2">
+                <h6 class="mb-0">Validation Status</h6>
+                <span class="badge ${results.valid ? 'bg-success' : 'bg-danger'} ms-2">
+                    ${results.valid ? 'Valid' : 'Invalid'}
+                </span>
+            </div>
+            <small class="text-muted">
+                ${results.checks_passed !== undefined ? results.checks_passed : 0} of ${results.total_checks !== undefined ? results.total_checks : 0} checks passed
+            </small>
+            <div class="mt-2">
+                <span class="badge bg-info">
+                    <i class="fas fa-info-circle me-1"></i>
+                    ${uploadedSchema ? 'Schema-based Validation' : 'Basic Data Quality Validation'}
+                </span>
+            </div>
+        </div>
+    `;
+    
+    // Display detailed check breakdown using check_details if available
+    if (results.check_details && results.check_details.length > 0) {
+        html += '<h6 class="mb-3">Validation Checks</h6>';
+        html += '<div class="validation-checks">';
+        
+        // Group checks by type
+        const basicChecks = results.check_details.filter(check => check.type === 'basic');
+        const columnChecks = results.check_details.filter(check => check.type === 'column');
+        
+        // Basic checks
+        if (basicChecks.length > 0) {
+            html += '<div class="mb-3">';
+            html += '<h6 class="text-primary"><i class="fas fa-cogs me-2"></i>Basic Checks</h6>';
+            
+            basicChecks.forEach(check => {
+                const statusClass = check.status === 'passed' ? 'check-passed' : 
+                                  check.status === 'failed' ? 'check-failed' : 'check-warning';
+                const iconClass = check.status === 'passed' ? 'fa-check-circle text-success' : 
+                                check.status === 'failed' ? 'fa-times-circle text-danger' : 'fa-exclamation-triangle text-warning';
+                
+                html += `
+                    <div class="check-item ${statusClass}">
+                        <i class="fas ${iconClass} me-2"></i>
+                        <span>${check.name}</span>
+                        <small class="text-muted ms-2">${check.description}</small>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        // Column-specific checks
+        if (columnChecks.length > 0) {
+            html += '<div class="mb-3">';
+            html += '<h6 class="text-primary"><i class="fas fa-columns me-2"></i>Column Validation</h6>';
+            
+            // Group column checks by column name
+            const columnGroups = {};
+            columnChecks.forEach(check => {
+                if (!columnGroups[check.column]) {
+                    columnGroups[check.column] = [];
+                }
+                columnGroups[check.column].push(check);
+            });
+            
+            Object.keys(columnGroups).forEach(columnName => {
+                const checks = columnGroups[columnName];
+                const hasFailures = checks.some(check => check.status === 'failed');
+                const hasWarnings = checks.some(check => check.status === 'warning');
+                const colStats = results.statistics[columnName] || {};
+                
+                html += `
+                    <div class="column-check mb-2">
+                        <div class="d-flex align-items-center">
+                            <strong class="me-2">${columnName}</strong>
+                            <span class="badge ${hasFailures ? 'bg-danger' : hasWarnings ? 'bg-warning' : 'bg-success'}">
+                                ${hasFailures ? 'Failed' : hasWarnings ? 'Warning' : 'Passed'}
+                            </span>
+                        </div>
+                        <div class="check-details ms-3">`;
+                
+                checks.forEach(check => {
+                    const statusClass = check.status === 'passed' ? 'check-passed' : 
+                                      check.status === 'failed' ? 'check-failed' : 'check-warning';
+                    const iconClass = check.status === 'passed' ? 'fa-check-circle text-success' : 
+                                    check.status === 'failed' ? 'fa-times-circle text-danger' : 'fa-exclamation-triangle text-warning';
+                    
+                    html += `
+                        <div class="check-item ${statusClass}">
+                            <i class="fas ${iconClass} me-2"></i>
+                            <span>${check.name}</span>
+                            <small class="text-muted ms-2">${check.description}</small>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                        <div class="column-stats ms-3 mt-1">
+                            <small class="text-muted">
+                                Rows: ${colStats.total_rows || 'N/A'} | 
+                                Null: ${colStats.null_count || 0} | 
+                                Unique: ${colStats.unique_count || 'N/A'}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        html += '</div>';
+    } else {
+        // Fallback to old display method if check_details not available
+        html += '<h6 class="mb-3">Validation Checks</h6>';
+        html += '<div class="validation-checks">';
+        
+        // Basic checks
+        html += '<div class="mb-3">';
+        html += '<h6 class="text-primary"><i class="fas fa-cogs me-2"></i>Basic Checks</h6>';
+        
+        // Column existence check
+        const hasMissingColumns = results.errors && results.errors.some(e => e.includes('Missing columns'));
+        const hasExtraColumns = results.warnings && results.warnings.some(w => w.includes('Extra columns'));
+        const dataEmpty = results.errors && results.errors.some(e => e.includes('Data is empty'));
+        
+        html += `
+            <div class="check-item ${hasMissingColumns ? 'check-failed' : 'check-passed'}">
+                <i class="fas ${hasMissingColumns ? 'fa-times-circle text-danger' : 'fa-check-circle text-success'} me-2"></i>
+                <span>Column existence validation</span>
+                ${hasMissingColumns ? `<small class="text-danger ms-2">Missing required columns</small>` : ''}
+            </div>
+            <div class="check-item ${dataEmpty ? 'check-failed' : 'check-passed'}">
+                <i class="fas ${dataEmpty ? 'fa-times-circle text-danger' : 'fa-check-circle text-success'} me-2"></i>
+                <span>Data integrity check</span>
+                ${dataEmpty ? `<small class="text-danger ms-2">Data is empty</small>` : ''}
+            </div>
+        `;
+        
+        if (hasExtraColumns) {
+            html += `
+                <div class="check-item check-warning">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <span>Extra columns detected</span>
+                    <small class="text-warning ms-2">Non-schema columns found</small>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        // Column-specific checks
+        if (results.statistics && Object.keys(results.statistics).length > 0) {
+            html += '<div class="mb-3">';
+            html += '<h6 class="text-primary"><i class="fas fa-columns me-2"></i>Column Validation</h6>';
+            
+            Object.keys(results.statistics).forEach(columnName => {
+                const colStats = results.statistics[columnName];
+                const columnErrors = results.errors ? results.errors.filter(e => e.includes(columnName)) : [];
+                const columnWarnings = results.warnings ? results.warnings.filter(w => w.includes(columnName)) : [];
+                
+                html += `
+                    <div class="column-check mb-2">
+                        <div class="d-flex align-items-center">
+                            <strong class="me-2">${columnName}</strong>
+                            <span class="badge ${columnErrors.length > 0 ? 'bg-danger' : columnWarnings.length > 0 ? 'bg-warning' : 'bg-success'}">
+                                ${columnErrors.length > 0 ? 'Failed' : columnWarnings.length > 0 ? 'Warning' : 'Passed'}
+                            </span>
+                        </div>
+                        <div class="check-details ms-3">
+                            <div class="check-item ${columnErrors.some(e => e.includes('unique')) ? 'check-failed' : 'check-passed'}">
+                                <i class="fas ${columnErrors.some(e => e.includes('unique')) ? 'fa-times-circle text-danger' : 'fa-check-circle text-success'} me-2"></i>
+                                <span>Uniqueness constraint</span>
+                            </div>
+                            <div class="check-item ${columnWarnings.some(w => w.includes('null probability')) ? 'check-warning' : 'check-passed'}">
+                                <i class="fas ${columnWarnings.some(w => w.includes('null probability')) ? 'fa-exclamation-triangle text-warning' : 'fa-check-circle text-success'} me-2"></i>
+                                <span>Null probability validation</span>
+                            </div>
+                            <div class="check-item ${columnWarnings.some(w => w.includes('Expected')) ? 'check-warning' : 'check-passed'}">
+                                <i class="fas ${columnWarnings.some(w => w.includes('Expected')) ? 'fa-exclamation-triangle text-warning' : 'fa-check-circle text-success'} me-2"></i>
+                                <span>Data type compatibility</span>
+                            </div>
+                        </div>
+                        <div class="column-stats ms-3 mt-1">
+                            <small class="text-muted">
+                                Rows: ${colStats.total_rows || 'N/A'} | 
+                                Null: ${colStats.null_count || 0} | 
+                                Unique: ${colStats.unique_count || 'N/A'}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        html += '</div>';
+    }
+    
+    // Display errors and warnings
+    if (results.errors && results.errors.length > 0) {
+        html += '<h6 class="text-danger mt-3">Issues Found</h6>';
+        results.errors.forEach(error => {
+            html += `
+                <div class="alert alert-danger py-2">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    ${error}
+                </div>
+            `;
+        });
+    }
+    
+    if (results.warnings && results.warnings.length > 0) {
+        html += '<h6 class="text-warning mt-3">Warnings</h6>';
+        results.warnings.forEach(warning => {
+            html += `
+                <div class="alert alert-warning py-2">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${warning}
+                </div>
+            `;
+        });
+    }
+    
+    if (!results.errors || results.errors.length === 0) {
+        html += `
+            <div class="alert alert-success mt-3">
+                <i class="fas fa-check-circle me-2"></i>
+                All validation checks passed successfully!
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function displayValidationSummary(results, container) {
+    // Ensure results is an object
+    if (!results || typeof results !== 'object') {
+        container.innerHTML = '<div class="alert alert-danger">Invalid validation results format</div>';
+        return;
+    }
+    
+    console.log('displayValidationSummary called with:', results);
+    
+    const stats = results.statistics || {};
+    console.log('Statistics object:', stats);
+    
+    // Calculate total rows and columns from the data
+    const totalRows = Object.keys(stats).length > 0 ? Object.values(stats)[0]?.total_rows || 'N/A' : 'N/A';
+    const totalColumns = Object.keys(stats).length;
+    
+    // Get validation check counts
+    const checksPassed = results.checks_passed !== undefined ? results.checks_passed : 0;
+    const totalChecks = results.total_checks !== undefined ? results.total_checks : 0;
+    const checksFailed = totalChecks - checksPassed;
+    const errorCount = results.errors && Array.isArray(results.errors) ? results.errors.length : 0;
+    const warningCount = results.warnings && Array.isArray(results.warnings) ? results.warnings.length : 0;
+    
+    // Debug logging
+    console.log('Validation Summary Debug:', {
+        totalRows,
+        totalColumns,
+        checksPassed,
+        totalChecks,
+        checksFailed,
+        errorCount,
+        warningCount,
+        stats: Object.keys(stats),
+        firstStatValue: Object.values(stats)[0]
+    });
+    
+    let html = `
+        <div class="row text-center">
+            <div class="col-6">
+                <h4 class="text-primary">${totalRows}</h4>
+                <small class="text-muted">Total Rows</small>
+            </div>
+            <div class="col-6">
+                <h4 class="text-primary">${totalColumns}</h4>
+                <small class="text-muted">Total Columns</small>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="row text-center">
+            <div class="col-6">
+                <h4 class="text-success">${checksPassed}</h4>
+                <small class="text-muted">Checks Passed</small>
+            </div>
+            <div class="col-6">
+                <h4 class="text-danger">${checksFailed}</h4>
+                <small class="text-muted">Checks Failed</small>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="row text-center">
+            <div class="col-6">
+                <h4 class="text-warning">${errorCount}</h4>
+                <small class="text-muted">Errors</small>
+            </div>
+            <div class="col-6">
+                <h4 class="text-info">${warningCount}</h4>
+                <small class="text-muted">Warnings</small>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+</script>
+{% endblock %}
